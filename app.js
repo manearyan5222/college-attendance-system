@@ -1,17 +1,18 @@
 /**
- * College Attendance System - Core Application Logic & State Management
+ * Apex College Attendance System - Enhanced Application Logic & State Management
  */
 
 // Initialize Database State
-const DB_VERSION = "1.0.0";
+const DB_VERSION = "2.0.0";
 const STORAGE_KEYS = {
   USERS: "attendance_users",
   STUDENTS: "attendance_students",
   PROFESSORS: "attendance_professors",
   SUBJECTS: "attendance_subjects",
   RECORDS: "attendance_records",
+  LEAVES: "attendance_leaves",
   CURRENT_USER: "attendance_current_user",
-  DB_INITIALIZED: "attendance_db_initialized"
+  DB_INITIALIZED: "attendance_db_initialized_v2"
 };
 
 // Seed Data & Storage Operations
@@ -21,7 +22,7 @@ class AttendanceDB {
       return; // Already initialized
     }
 
-    console.log("Initializing database with seed data...");
+    console.log("Initializing database with v2 seed data...");
 
     // 1. Create Users (2 Professors, 10 Students)
     const users = [
@@ -48,7 +49,7 @@ class AttendanceDB {
       { id: "prof_2", user_id: "u_p2", full_name: "Dr. David Miller", department: "Information Technology" }
     ];
 
-    // 3. Create Subjects (5 dummy subjects assigned to the professors)
+    // 3. Create Subjects
     const subjects = [
       { id: "subj_1", name: "Computer Networks", professor_id: "prof_1" },
       { id: "subj_2", name: "Software Engineering", professor_id: "prof_1" },
@@ -71,14 +72,11 @@ class AttendanceDB {
       { id: "stud_10", user_id: "u_s10", full_name: "Sophia Loren", roll_no: "52", division: "A", branch: "Information Technology", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia" }
     ];
 
-    // 5. Generate Historical Attendance for the past 7 days (excluding today)
+    // 5. Generate Historical Attendance for past 14 days
     const records = [];
-    const statuses = ["Present", "Present", "Present", "Present", "Absent", "Late", "Present"]; // Weighted towards present
+    const statuses = ["Present", "Present", "Present", "Present", "Absent", "Late", "Present"];
     
-    // Enrollment helper: returns true if student is enrolled in subject
     const isEnrolled = (student, subject) => {
-      // computer engineering students study: Networks, Software Eng, Web Dev, Database
-      // IT students study: Database, AI, Web Dev, Networks
       if (student.branch === "Computer Engineering") {
         return ["subj_1", "subj_2", "subj_3", "subj_4"].includes(subject.id);
       } else {
@@ -89,7 +87,7 @@ class AttendanceDB {
     const today = new Date();
     let recordCounter = 1;
 
-    for (let i = 7; i >= 1; i--) {
+    for (let i = 14; i >= 1; i--) {
       const date = new Date();
       date.setDate(today.getDate() - i);
       const dateString = date.toISOString().split("T")[0];
@@ -97,10 +95,13 @@ class AttendanceDB {
       subjects.forEach(subject => {
         students.forEach(student => {
           if (isEnrolled(student, subject)) {
-            // Pick a status randomly but semi-consistently per student/day
             const statusIndex = Math.floor(Math.random() * statuses.length);
-            const status = statuses[statusIndex];
+            let status = statuses[statusIndex];
             
+            // Ensure Aryan Mane has realistic attendance to test features
+            if (student.id === "stud_1" && i === 2) status = "Absent";
+            if (student.id === "stud_1" && i === 5) status = "Absent";
+
             records.push({
               id: `rec_${recordCounter++}`,
               student_id: student.id,
@@ -113,16 +114,40 @@ class AttendanceDB {
       });
     }
 
-    // Save all to localStorage
+    // 6. Seed Sample Leave Applications
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 2);
+    const leaves = [
+      {
+        id: "leave_1",
+        student_id: "stud_1", // Aryan Mane
+        subject_id: "subj_1", // Computer Networks
+        date: yesterday.toISOString().split("T")[0],
+        reason: "High fever & viral infection. Doctor certificate attached.",
+        status: "Pending",
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "leave_2",
+        student_id: "stud_2", // Jessica Taylor
+        subject_id: "subj_4", // Database Systems
+        date: yesterday.toISOString().split("T")[0],
+        reason: "Inter-college Swimming Championship finals.",
+        status: "Approved",
+        created_at: new Date().toISOString()
+      }
+    ];
+
+    // Save to localStorage
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     localStorage.setItem(STORAGE_KEYS.PROFESSORS, JSON.stringify(professors));
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+    localStorage.setItem(STORAGE_KEYS.LEAVES, JSON.stringify(leaves));
     localStorage.setItem(STORAGE_KEYS.DB_INITIALIZED, "true");
   }
 
-  // Getters
   static getData(key) {
     return JSON.parse(localStorage.getItem(key)) || [];
   }
@@ -131,7 +156,6 @@ class AttendanceDB {
     localStorage.setItem(key, JSON.stringify(data));
   }
 
-  // Check enrollment matching current logic
   static isStudentEnrolled(student, subjectId) {
     if (student.branch === "Computer Engineering") {
       return ["subj_1", "subj_2", "subj_3", "subj_4"].includes(subjectId);
@@ -143,21 +167,21 @@ class AttendanceDB {
 
 // Current Session State
 let currentUser = null;
-// Active professor state
 let selectedSubjectId = "";
 let selectedDate = new Date().toISOString().split("T")[0];
-let tempAttendance = {}; // Maps studentId -> status ('Present' | 'Absent' | 'Late')
+let tempAttendance = {};
+let activeStudentTab = "overview";
+let currentCalendarMonth = new Date().getMonth();
+let currentCalendarYear = new Date().getFullYear();
 
 // Initialize DB on script load
 AttendanceDB.init();
 
-// Setup DOM elements reference & load application
 document.addEventListener("DOMContentLoaded", () => {
   initApp();
 });
 
 function initApp() {
-  // Check if session exists
   const storedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   if (storedUser) {
     currentUser = JSON.parse(storedUser);
@@ -167,6 +191,7 @@ function initApp() {
   }
   
   setupEventListeners();
+  populateQuickSwitcher();
 }
 
 function showView(viewId) {
@@ -182,7 +207,6 @@ function showView(viewId) {
     }
   });
 
-  // Nav-bar controls
   const navContainer = document.getElementById("nav-container");
   if (currentUser) {
     navContainer.classList.remove("hidden");
@@ -193,69 +217,50 @@ function showView(viewId) {
   }
 }
 
-function setupEventListeners() {
-  // Login Form
-  const loginForm = document.getElementById("login-form");
-  if (loginForm) {
-    loginForm.addEventListener("submit", handleLogin);
-  }
+function populateQuickSwitcher() {
+  const switcher = document.getElementById("quick-user-switcher");
+  if (!switcher) return;
 
-  // Logout Button
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", handleLogout);
-  }
+  switcher.innerHTML = `<option value="" disabled selected>Switch Account (Demo)</option>`;
+  
+  // Professors
+  const profs = AttendanceDB.getData(STORAGE_KEYS.PROFESSORS);
+  const users = AttendanceDB.getData(STORAGE_KEYS.USERS);
+  
+  const profGroup = document.createElement("optgroup");
+  profGroup.label = "Professors";
+  profs.forEach(p => {
+    const u = users.find(usr => usr.id === p.user_id);
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = `${p.full_name} (${p.department})`;
+    profGroup.appendChild(opt);
+  });
+  switcher.appendChild(profGroup);
 
-  // Professor controls
-  const subjSelect = document.getElementById("subject-select");
-  if (subjSelect) {
-    subjSelect.addEventListener("change", (e) => {
-      selectedSubjectId = e.target.value;
-      loadAttendanceGrid();
-    });
-  }
+  // Students
+  const studs = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const studGroup = document.createElement("optgroup");
+  studGroup.label = "Students";
+  studs.forEach(s => {
+    const u = users.find(usr => usr.id === s.user_id);
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = `${s.full_name} (Roll ${s.roll_no} - ${s.branch})`;
+    studGroup.appendChild(opt);
+  });
+  switcher.appendChild(studGroup);
 
-  const dateInput = document.getElementById("date-select");
-  if (dateInput) {
-    // Default to today
-    dateInput.value = selectedDate;
-    dateInput.addEventListener("change", (e) => {
-      selectedDate = e.target.value;
-      loadAttendanceGrid();
-    });
-  }
-
-  const submitAttendanceBtn = document.getElementById("submit-attendance");
-  if (submitAttendanceBtn) {
-    submitAttendanceBtn.addEventListener("click", submitAttendance);
-  }
-
-  const exportExcelBtn = document.getElementById("export-excel");
-  if (exportExcelBtn) {
-    exportExcelBtn.addEventListener("click", exportAttendanceHistory);
-  }
+  switcher.addEventListener("change", (e) => {
+    switchUserById(e.target.value);
+  });
 }
 
-// Authentication Handlers
-function handleLogin(e) {
-  e.preventDefault();
-  
-  const emailInput = document.getElementById("login-email").value.trim().toLowerCase();
-  const passwordInput = document.getElementById("login-password").value;
-  const loginError = document.getElementById("login-error");
-
+function switchUserById(userId) {
   const users = AttendanceDB.getData(STORAGE_KEYS.USERS);
-  const user = users.find(u => u.email === emailInput && u.password === passwordInput);
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
 
-  if (!user) {
-    loginError.textContent = "Invalid email or password.";
-    loginError.classList.remove("hidden");
-    return;
-  }
-
-  loginError.classList.add("hidden");
-  
-  // Set up Current Session Object
   currentUser = {
     id: user.id,
     email: user.email,
@@ -282,6 +287,97 @@ function handleLogin(e) {
 
   localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
   showDashboard();
+  showToast(`Switched account to ${currentUser.name} (${currentUser.role})`);
+}
+
+function setupEventListeners() {
+  // Login Form
+  const loginForm = document.getElementById("login-form");
+  if (loginForm) loginForm.addEventListener("submit", handleLogin);
+
+  // Logout Button
+  const logoutBtn = document.getElementById("logout-btn");
+  if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+
+  // Professor controls
+  const subjSelect = document.getElementById("subject-select");
+  if (subjSelect) {
+    subjSelect.addEventListener("change", (e) => {
+      selectedSubjectId = e.target.value;
+      loadAttendanceGrid();
+    });
+  }
+
+  const dateInput = document.getElementById("date-select");
+  if (dateInput) {
+    dateInput.value = selectedDate;
+    dateInput.addEventListener("change", (e) => {
+      selectedDate = e.target.value;
+      loadAttendanceGrid();
+    });
+  }
+
+  const searchStudentInput = document.getElementById("search-student-grid");
+  if (searchStudentInput) {
+    searchStudentInput.addEventListener("input", filterAttendanceGrid);
+  }
+
+  const markAllPresentBtn = document.getElementById("btn-mark-all-present");
+  if (markAllPresentBtn) {
+    markAllPresentBtn.addEventListener("click", () => bulkSetStatus("Present"));
+  }
+
+  const markAllAbsentBtn = document.getElementById("btn-mark-all-absent");
+  if (markAllAbsentBtn) {
+    markAllAbsentBtn.addEventListener("click", () => bulkSetStatus("Absent"));
+  }
+
+  const submitAttendanceBtn = document.getElementById("submit-attendance");
+  if (submitAttendanceBtn) submitAttendanceBtn.addEventListener("click", submitAttendance);
+
+  const exportExcelBtn = document.getElementById("export-excel");
+  if (exportExcelBtn) exportExcelBtn.addEventListener("click", exportAttendanceHistory);
+
+  // Leave application form submit
+  const leaveForm = document.getElementById("student-leave-form");
+  if (leaveForm) leaveForm.addEventListener("submit", handleLeaveSubmit);
+
+  // History log filters
+  const historySearch = document.getElementById("history-search-input");
+  if (historySearch) historySearch.addEventListener("input", renderStudentHistoryTable);
+
+  const historyStatus = document.getElementById("history-status-filter");
+  if (historyStatus) historyStatus.addEventListener("change", renderStudentHistoryTable);
+
+  // Calculator slider
+  const calcSlider = document.getElementById("calc-target-slider");
+  if (calcSlider) {
+    calcSlider.addEventListener("input", (e) => {
+      document.getElementById("calc-target-value").textContent = `${e.target.value}%`;
+      calculateAttendanceGoal();
+    });
+  }
+}
+
+// Authentication Handlers
+function handleLogin(e) {
+  e.preventDefault();
+  
+  const emailInput = document.getElementById("login-email").value.trim().toLowerCase();
+  const passwordInput = document.getElementById("login-password").value;
+  const loginError = document.getElementById("login-error");
+
+  const users = AttendanceDB.getData(STORAGE_KEYS.USERS);
+  const user = users.find(u => u.email === emailInput && u.password === passwordInput);
+
+  if (!user) {
+    loginError.textContent = "Invalid email or password.";
+    loginError.classList.remove("hidden");
+    return;
+  }
+
+  loginError.classList.add("hidden");
+  switchUserById(user.id);
 }
 
 function handleLogout() {
@@ -291,7 +387,6 @@ function handleLogout() {
   localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   showView("login-view");
   
-  // Reset Form
   document.getElementById("login-form").reset();
   document.getElementById("login-error").classList.add("hidden");
 }
@@ -308,7 +403,6 @@ function showDashboard() {
 
 // PROFESSOR DASHBOARD LOGIC
 function initProfessorDashboard() {
-  // Reset fields
   const subjSelect = document.getElementById("subject-select");
   subjSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
 
@@ -322,7 +416,7 @@ function initProfessorDashboard() {
     subjSelect.appendChild(option);
   });
 
-  // Clear student grid and disable submit until subject is selected
+  // Clear grid
   document.getElementById("students-attendance-grid").innerHTML = `
     <div class="col-span-full py-12 text-center text-slate-400">
       <svg class="mx-auto h-12 w-12 text-slate-500 mb-3 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -331,8 +425,14 @@ function initProfessorDashboard() {
       <span class="text-lg font-medium">Please select a subject and class date to load students.</span>
     </div>
   `;
+  
   document.getElementById("submit-attendance").disabled = true;
   document.getElementById("export-excel").disabled = true;
+  document.getElementById("btn-mark-all-present").disabled = true;
+  document.getElementById("btn-mark-all-absent").disabled = true;
+
+  // Load Leave Applications for this Professor
+  loadProfessorLeaveApplications();
 }
 
 function loadAttendanceGrid() {
@@ -341,38 +441,45 @@ function loadAttendanceGrid() {
   const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
   const enrolledStudents = students.filter(s => AttendanceDB.isStudentEnrolled(s, selectedSubjectId));
   
-  // Fetch existing attendance for this date & subject
   const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
   const existingRecords = records.filter(r => r.subject_id === selectedSubjectId && r.date === selectedDate);
   
-  // Set temporary attendance status
   tempAttendance = {};
   enrolledStudents.forEach(s => {
     const existing = existingRecords.find(r => r.student_id === s.id);
-    tempAttendance[s.id] = existing ? existing.status : "Present"; // Default to Present if new
+    tempAttendance[s.id] = existing ? existing.status : "Present";
   });
 
-  // Render Grid
+  renderStudentCards(enrolledStudents);
+
+  document.getElementById("submit-attendance").disabled = false;
+  document.getElementById("export-excel").disabled = false;
+  document.getElementById("btn-mark-all-present").disabled = false;
+  document.getElementById("btn-mark-all-absent").disabled = false;
+  
+  updateClassStatsBar(enrolledStudents.length);
+}
+
+function renderStudentCards(enrolledStudents) {
   const grid = document.getElementById("students-attendance-grid");
   grid.innerHTML = "";
 
   if (enrolledStudents.length === 0) {
     grid.innerHTML = `
       <div class="col-span-full py-12 text-center text-slate-400">
-        <p class="text-lg">No students enrolled in this subject's department.</p>
+        <p class="text-lg">No students enrolled matching search criteria.</p>
       </div>
     `;
-    document.getElementById("submit-attendance").disabled = true;
-    document.getElementById("export-excel").disabled = true;
     return;
   }
 
   enrolledStudents.forEach(s => {
     const card = document.createElement("div");
-    card.className = "bg-slate-800 border border-slate-700/60 rounded-2xl p-5 shadow-xl transition-all duration-300 hover:border-slate-600/80 hover:shadow-2xl flex flex-col justify-between";
+    card.className = "student-card-item bg-slate-800 border border-slate-700/60 rounded-2xl p-5 shadow-xl transition-all duration-300 hover:border-slate-600/80 hover:shadow-2xl flex flex-col justify-between";
+    card.setAttribute("data-name", s.full_name.toLowerCase());
+    card.setAttribute("data-roll", s.roll_no.toLowerCase());
     card.id = `student-card-${s.id}`;
 
-    // Header with Profile & Info
     const cardHeader = `
       <div class="flex items-center space-x-4 mb-5">
         <div class="relative">
@@ -395,7 +502,6 @@ function loadAttendanceGrid() {
       </div>
     `;
 
-    // Action toggles
     const buttons = `
       <div class="grid grid-cols-3 gap-2">
         <button onclick="setStudentStatus('${s.id}', 'Present')" id="btn-${s.id}-Present" class="status-btn font-medium py-2 px-1 rounded-xl text-xs transition-all duration-200 border flex items-center justify-center space-x-1">
@@ -412,18 +518,37 @@ function loadAttendanceGrid() {
 
     card.innerHTML = cardHeader + buttons;
     grid.appendChild(card);
-    
-    // Set active status styling
     updateButtonStyles(s.id);
   });
+}
 
-  document.getElementById("submit-attendance").disabled = false;
-  document.getElementById("export-excel").disabled = false;
+function filterAttendanceGrid() {
+  const query = document.getElementById("search-student-grid").value.trim().toLowerCase();
+  const cards = document.querySelectorAll(".student-card-item");
+  cards.forEach(card => {
+    const name = card.getAttribute("data-name");
+    const roll = card.getAttribute("data-roll");
+    if (name.includes(query) || roll.includes(query)) {
+      card.classList.remove("hidden");
+    } else {
+      card.classList.add("hidden");
+    }
+  });
+}
+
+function bulkSetStatus(status) {
+  Object.keys(tempAttendance).forEach(sId => {
+    tempAttendance[sId] = status;
+    updateButtonStyles(sId);
+  });
+  updateClassStatsBar(Object.keys(tempAttendance).length);
+  showToast(`Marked all students as ${status}`);
 }
 
 function setStudentStatus(studentId, status) {
   tempAttendance[studentId] = status;
   updateButtonStyles(studentId);
+  updateClassStatsBar(Object.keys(tempAttendance).length);
 }
 
 function updateButtonStyles(studentId) {
@@ -446,11 +571,9 @@ function updateButtonStyles(studentId) {
     }
   };
 
-  // Reset & update buttons
   ["Present", "Absent", "Late"].forEach(status => {
     const btn = document.getElementById(`btn-${studentId}-${status}`);
     if (btn) {
-      // Clear previous classes
       btn.className = "status-btn font-medium py-2 px-1 rounded-xl text-xs transition-all duration-200 border flex items-center justify-center space-x-1";
       if (status === currentStatus) {
         btn.className += " " + states[status].activeClass;
@@ -460,19 +583,31 @@ function updateButtonStyles(studentId) {
     }
   });
 
-  // Update ping status badge on card avatar
   const badge = document.getElementById(`badge-${studentId}`);
   if (badge) {
     const pingDot = badge.children[0];
     const solidDot = badge.children[1];
-    
-    // Clear colors
-    pingDot.className = "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75";
-    solidDot.className = "relative inline-flex rounded-full h-4 w-4";
-    
-    // Add new colors
-    pingDot.className += " " + states[currentStatus].badgeColor;
-    solidDot.className += " " + states[currentStatus].badgeColor;
+    pingDot.className = "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 " + states[currentStatus].badgeColor;
+    solidDot.className = "relative inline-flex rounded-full h-4 w-4 " + states[currentStatus].badgeColor;
+  }
+}
+
+function updateClassStatsBar(totalCount) {
+  if (totalCount === 0) return;
+  const values = Object.values(tempAttendance);
+  const present = values.filter(v => v === "Present").length;
+  const absent = values.filter(v => v === "Absent").length;
+  const late = values.filter(v => v === "Late").length;
+
+  const pPct = Math.round((present / totalCount) * 100);
+  
+  const statsEl = document.getElementById("class-attendance-summary");
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <span class="text-emerald-400 font-bold">${present} Present (${pPct}%)</span> • 
+      <span class="text-rose-400 font-bold">${absent} Absent</span> • 
+      <span class="text-amber-400 font-bold">${late} Late</span>
+    `;
   }
 }
 
@@ -480,13 +615,10 @@ function submitAttendance() {
   if (!selectedSubjectId) return;
 
   const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
-  
-  // Filter out existing records for this subject/date to avoid duplicates
   let updatedRecords = records.filter(r => !(r.subject_id === selectedSubjectId && r.date === selectedDate));
   
   let newRecordCounter = records.length + 1;
 
-  // Append new statuses from temporary state
   Object.keys(tempAttendance).forEach(studentId => {
     updatedRecords.push({
       id: `rec_${newRecordCounter++}`,
@@ -498,8 +630,6 @@ function submitAttendance() {
   });
 
   AttendanceDB.saveData(STORAGE_KEYS.RECORDS, updatedRecords);
-  
-  // Visual Success Toast
   showToast("Attendance submitted successfully!");
   loadAttendanceGrid();
 }
@@ -513,7 +643,6 @@ function exportAttendanceHistory() {
   const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
   const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
   
-  // Get all historic records for this subject
   const subjectRecords = records.filter(r => r.subject_id === selectedSubjectId);
 
   if (subjectRecords.length === 0) {
@@ -521,17 +650,8 @@ function exportAttendanceHistory() {
     return;
   }
 
-  // Sort by date desc, student name asc
-  subjectRecords.sort((a, b) => {
-    if (a.date !== b.date) {
-      return b.date.localeCompare(a.date);
-    }
-    const studentA = students.find(s => s.id === a.student_id)?.full_name || "";
-    const studentB = students.find(s => s.id === b.student_id)?.full_name || "";
-    return studentA.localeCompare(studentB);
-  });
+  subjectRecords.sort((a, b) => b.date.localeCompare(a.date));
 
-  // Generate CSV Content
   const csvHeaders = ["Date", "Student Name", "Roll No", "Status"];
   const csvRows = [csvHeaders.join(",")];
 
@@ -549,7 +669,6 @@ function exportAttendanceHistory() {
   const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
   const encodedUri = encodeURI(csvContent);
   
-  // Create virtual download element
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   link.setAttribute("download", `${subjectName.replace(/\s+/g, "_")}_Attendance_Report.csv`);
@@ -560,8 +679,118 @@ function exportAttendanceHistory() {
   showToast("CSV report exported successfully!");
 }
 
+function loadProfessorLeaveApplications() {
+  const container = document.getElementById("prof-leave-applications");
+  if (!container) return;
+
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+  const subjects = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+
+  const profSubjects = subjects.filter(s => s.professor_id === currentUser.profileId).map(s => s.id);
+  const relevantLeaves = leaves.filter(l => profSubjects.includes(l.subject_id) || l.subject_id === "ALL");
+
+  container.innerHTML = "";
+
+  if (relevantLeaves.length === 0) {
+    container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">No pending leave applications.</p>`;
+    return;
+  }
+
+  relevantLeaves.forEach(l => {
+    const student = students.find(s => s.id === l.student_id);
+    const subject = subjects.find(s => s.id === l.subject_id);
+
+    const card = document.createElement("div");
+    card.className = "bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4";
+
+    const badgeColor = l.status === "Pending" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                       l.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                       "bg-rose-500/10 text-rose-400 border-rose-500/20";
+
+    card.innerHTML = `
+      <div class="space-y-1">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-slate-100 text-sm">${student ? student.full_name : 'Student'}</span>
+          <span class="text-xs text-indigo-400 font-mono">(Roll ${student ? student.roll_no : ''})</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">${l.status}</span>
+        </div>
+        <p class="text-xs text-slate-400">Date: <strong class="text-slate-200">${formatDateString(l.date)}</strong> | Subject: <strong class="text-slate-200">${subject ? subject.name : 'All Subjects'}</strong></p>
+        <p class="text-xs text-slate-300 italic bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">"${l.reason}"</p>
+      </div>
+
+      ${l.status === "Pending" ? `
+        <div class="flex items-center space-x-2 w-full sm:w-auto">
+          <button onclick="updateLeaveStatus('${l.id}', 'Approved')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 text-xs font-semibold">
+            Approve
+          </button>
+          <button onclick="updateLeaveStatus('${l.id}', 'Rejected')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 text-xs font-semibold">
+            Reject
+          </button>
+        </div>
+      ` : ''}
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+function updateLeaveStatus(leaveId, newStatus) {
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+  const leave = leaves.find(l => l.id === leaveId);
+  if (!leave) return;
+
+  leave.status = newStatus;
+  AttendanceDB.saveData(STORAGE_KEYS.LEAVES, leaves);
+
+  // If approved, update attendance record to "Present" (Excused)
+  if (newStatus === "Approved") {
+    const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+    const existingRec = records.find(r => r.student_id === leave.student_id && r.date === leave.date && r.subject_id === leave.subject_id);
+    if (existingRec) {
+      existingRec.status = "Present";
+    } else {
+      records.push({
+        id: `rec_${records.length + 1}`,
+        student_id: leave.student_id,
+        subject_id: leave.subject_id,
+        date: leave.date,
+        status: "Present"
+      });
+    }
+    AttendanceDB.saveData(STORAGE_KEYS.RECORDS, records);
+  }
+
+  showToast(`Leave application ${newStatus.toLowerCase()}!`);
+  loadProfessorLeaveApplications();
+}
+
 // STUDENT DASHBOARD LOGIC
 let studentCharts = [];
+
+function switchStudentTab(tabName) {
+  activeStudentTab = tabName;
+  const tabs = ["overview", "calculator", "calendar", "leave", "history"];
+  
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-btn-${t}`);
+    const view = document.getElementById(`student-tab-${t}`);
+    if (btn && view) {
+      if (t === tabName) {
+        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold btn-gradient text-white shadow-lg transition-all duration-200";
+        view.classList.remove("hidden");
+      } else {
+        btn.className = "px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all duration-200";
+        view.classList.add("hidden");
+      }
+    }
+  });
+
+  if (tabName === "calendar") renderStudentCalendar();
+  if (tabName === "calculator") calculateAttendanceGoal();
+  if (tabName === "history") renderStudentHistoryTable();
+  if (tabName === "leave") loadStudentLeaveApplications();
+}
 
 function initStudentDashboard() {
   const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
@@ -569,7 +798,6 @@ function initStudentDashboard() {
   
   if (!student) return;
 
-  // Clear previous chart instances
   studentCharts.forEach(chart => chart.destroy());
   studentCharts = [];
 
@@ -580,26 +808,51 @@ function initStudentDashboard() {
   document.getElementById("student-division").textContent = student.division;
   document.getElementById("student-branch").textContent = student.branch;
 
-  // Load subject breakdown & metrics
   const subjects = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
   const enrolledSubjects = subjects.filter(s => AttendanceDB.isStudentEnrolled(student, s.id));
   
   const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
   const studentRecords = records.filter(r => r.student_id === student.id);
 
+  // Populate Subject Selectors for Calculator and Leave Form
+  populateSubjectDropdowns(enrolledSubjects);
+
+  // Load Overview Breakdown
+  renderStudentOverview(student, enrolledSubjects, studentRecords);
+
+  // Switch to Overview Tab by default
+  switchStudentTab("overview");
+}
+
+function populateSubjectDropdowns(enrolledSubjects) {
+  const calcSelect = document.getElementById("calc-subject-select");
+  const leaveSelect = document.getElementById("leave-subject-select");
+
+  if (calcSelect) {
+    calcSelect.innerHTML = `<option value="ALL">All Enrolled Courses (Overall)</option>`;
+    enrolledSubjects.forEach(s => {
+      calcSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    });
+  }
+
+  if (leaveSelect) {
+    leaveSelect.innerHTML = `<option value="" disabled selected>Select Subject</option>`;
+    enrolledSubjects.forEach(s => {
+      leaveSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    });
+  }
+}
+
+function renderStudentOverview(student, enrolledSubjects, studentRecords) {
   const container = document.getElementById("student-subject-breakdown");
   container.innerHTML = "";
 
-  if (enrolledSubjects.length === 0) {
-    container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-8">Not enrolled in any classes.</div>`;
-    return;
-  }
-
-  // Calculate Overall Metrics
   let totalClasses = 0;
   let totalPresent = 0;
   let totalAbsent = 0;
   let totalLate = 0;
+
+  const lowAttendanceSubjects = [];
 
   enrolledSubjects.forEach((subject, index) => {
     const subjRecords = studentRecords.filter(r => r.subject_id === subject.id);
@@ -613,28 +866,32 @@ function initStudentDashboard() {
     totalAbsent += absentCount;
     totalLate += lateCount;
 
-    // Attendance % = (Present + Late) / Total * 100
     const attendancePercentage = count > 0 ? Math.round(((presentCount + lateCount) / count) * 100) : 100;
     
-    // Create card element
-    const card = document.createElement("div");
-    card.className = "bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300 hover:border-slate-600/80 hover:shadow-2xl";
-    
-    // Progress Ring color depending on %
-    let strokeColor = "#10b981"; // Emerald
+    if (attendancePercentage < 75) {
+      lowAttendanceSubjects.push({ name: subject.name, pct: attendancePercentage });
+    }
+
+    let strokeColor = "#10b981";
     let textColorClass = "text-emerald-400";
     if (attendancePercentage < 75) {
-      strokeColor = "#f43f5e"; // Rose
+      strokeColor = "#f43f5e";
       textColorClass = "text-rose-400";
     } else if (attendancePercentage < 85) {
-      strokeColor = "#f59e0b"; // Amber
+      strokeColor = "#f59e0b";
       textColorClass = "text-amber-400";
     }
 
-    const cardContent = `
+    const card = document.createElement("div");
+    card.className = "bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300 hover:border-slate-600/80 hover:shadow-2xl";
+    
+    card.innerHTML = `
       <div class="flex-1 w-full text-center md:text-left">
-        <h4 class="text-lg font-bold text-slate-100 mb-1">${subject.name}</h4>
-        <p class="text-xs text-slate-400 mb-4">Subject ID: <span class="font-mono text-indigo-400">${subject.id.toUpperCase()}</span></p>
+        <div class="flex items-center justify-between mb-1">
+          <h4 class="text-lg font-bold text-slate-100">${subject.name}</h4>
+          ${attendancePercentage < 75 ? '<span class="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider">Shortage</span>' : ''}
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Subject Code: <span class="font-mono text-indigo-400">${subject.id.toUpperCase()}</span></p>
         
         <div class="grid grid-cols-3 gap-2 max-w-sm mx-auto md:mx-0">
           <div class="bg-slate-900/60 border border-slate-700/40 rounded-xl p-3 text-center">
@@ -661,15 +918,13 @@ function initStudentDashboard() {
       </div>
     `;
     
-    card.innerHTML = cardContent;
     container.appendChild(card);
 
-    // Render Doughnut Chart for this subject
     setTimeout(() => {
       const canvasEl = document.getElementById(`chart-subject-${index}`);
       if (!canvasEl) return;
       const ctx = canvasEl.getContext('2d');
-      const emptyColor = "#1e293b"; // Slate-800
+      const emptyColor = "#1e293b";
       
       const newChart = new Chart(ctx, {
         type: 'doughnut',
@@ -677,18 +932,14 @@ function initStudentDashboard() {
           datasets: [{
             data: count > 0 ? [presentCount + lateCount, absentCount] : [1, 0],
             backgroundColor: count > 0 ? [strokeColor, emptyColor] : ['#334155', emptyColor],
-            borderWidth: 0,
-            hoverOffset: 0
+            borderWidth: 0
           }]
         },
         options: {
           cutout: '80%',
           responsive: true,
           maintainAspectRatio: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          }
+          plugins: { legend: { display: false }, tooltip: { enabled: false } }
         }
       });
       studentCharts.push(newChart);
@@ -698,46 +949,324 @@ function initStudentDashboard() {
   // Calculate Overall Metrics
   const overallPercentage = totalClasses > 0 ? Math.round(((totalPresent + totalLate) / totalClasses) * 100) : 100;
   
-  // Render overall numbers
   document.getElementById("student-overall-percentage").textContent = `${overallPercentage}%`;
   document.getElementById("student-overall-present").textContent = totalPresent;
   document.getElementById("student-overall-absent").textContent = totalAbsent;
   document.getElementById("student-overall-late").textContent = totalLate;
   document.getElementById("student-overall-total").textContent = totalClasses;
 
-  // Render Overall Ring progress
   const overallRing = document.getElementById("student-overall-ring");
   if (overallRing) {
-    const strokeDash = 283; // Circumference of radius 45 circle (2 * PI * r)
+    const strokeDash = 283;
     const offset = strokeDash - (overallPercentage / 100) * strokeDash;
     overallRing.style.strokeDasharray = strokeDash;
     overallRing.style.strokeDashoffset = offset;
     
-    if (overallPercentage < 75) {
-      overallRing.style.stroke = "#f43f5e"; // Rose
-    } else if (overallPercentage < 85) {
-      overallRing.style.stroke = "#f59e0b"; // Amber
-    } else {
-      overallRing.style.stroke = "#10b981"; // Emerald
-    }
+    if (overallPercentage < 75) overallRing.style.stroke = "#f43f5e";
+    else if (overallPercentage < 85) overallRing.style.stroke = "#f59e0b";
+    else overallRing.style.stroke = "#10b981";
   }
 
-  // Load detailed logs
-  loadStudentHistoryTable(studentRecords, subjects);
+  // Warning Banner
+  const alertContainer = document.getElementById("student-shortage-alert-container");
+  if (alertContainer) {
+    if (lowAttendanceSubjects.length > 0) {
+      alertContainer.classList.remove("hidden");
+      alertContainer.innerHTML = `
+        <div class="border border-rose-500/30 bg-rose-500/10 rounded-2xl p-4 flex items-center space-x-4">
+          <div class="p-2 bg-rose-500/20 rounded-xl text-rose-400 flex-shrink-0">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-rose-400">Attendance Shortage Alert (< 75%)</p>
+            <p class="text-xs text-slate-300 mt-0.5">
+              You are currently below 75% in: <strong>${lowAttendanceSubjects.map(s => `${s.name} (${s.pct}%)`).join(", ")}</strong>. Please use the Attendance Calculator to plan required classes.
+            </p>
+          </div>
+        </div>
+      `;
+    } else {
+      alertContainer.classList.add("hidden");
+    }
+  }
 }
 
-function loadStudentHistoryTable(studentRecords, subjects) {
-  const tbody = document.getElementById("student-history-tbody");
-  tbody.innerHTML = "";
+// ATTENDANCE CALCULATOR / GOAL PLANNER LOGIC
+function calculateAttendanceGoal() {
+  const targetPct = parseInt(document.getElementById("calc-target-slider").value, 10) || 75;
+  const selectedSubjId = document.getElementById("calc-subject-select").value;
 
-  // Sort logs by date desc
+  const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const student = students.find(s => s.id === currentUser.profileId);
+  const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+  const studentRecords = records.filter(r => r.student_id === student.id);
+
+  let present = 0;
+  let total = 0;
+
+  if (selectedSubjId === "ALL") {
+    total = studentRecords.length;
+    present = studentRecords.filter(r => r.status === "Present" || r.status === "Late").length;
+  } else {
+    const subjRecords = studentRecords.filter(r => r.subject_id === selectedSubjId);
+    total = subjRecords.length;
+    present = subjRecords.filter(r => r.status === "Present" || r.status === "Late").length;
+  }
+
+  const currentPct = total > 0 ? Math.round((present / total) * 100) : 100;
+  const resultCard = document.getElementById("calc-result-card");
+  
+  if (!resultCard) return;
+
+  if (total === 0) {
+    resultCard.innerHTML = `<p class="text-slate-400 text-sm">No recorded classes yet for this selection.</p>`;
+    return;
+  }
+
+  const reqRatio = targetPct / 100;
+
+  if (currentPct >= targetPct) {
+    // How many classes can be missed? (present / (total + x) >= reqRatio => x <= (present / reqRatio) - total)
+    const maxMissable = Math.floor((present / reqRatio) - total);
+    resultCard.innerHTML = `
+      <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center space-y-2">
+        <div class="inline-flex p-3 rounded-full bg-emerald-500/20 text-emerald-400 mb-1">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h4 class="text-xl font-extrabold text-emerald-400">You are in the Safe Zone!</h4>
+        <p class="text-sm text-slate-300">
+          Your current attendance is <strong class="text-white">${currentPct}%</strong> (${present}/${total} classes).
+        </p>
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-850 mt-3 inline-block">
+          <span class="text-xs text-slate-400 block uppercase font-bold tracking-wider mb-1">Safe Bunk Budget</span>
+          <span class="text-3xl font-black text-emerald-400">${Math.max(0, maxMissable)}</span>
+          <span class="text-xs text-slate-400 block mt-1">classes can be skipped while maintaining ≥ ${targetPct}%</span>
+        </div>
+      </div>
+    `;
+  } else {
+    // How many consecutive classes must be attended? ((present + x) / (total + x) >= reqRatio => x >= (reqRatio * total - present) / (1 - reqRatio))
+    const requiredConsec = Math.ceil((reqRatio * total - present) / (1 - reqRatio));
+    resultCard.innerHTML = `
+      <div class="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-6 text-center space-y-2">
+        <div class="inline-flex p-3 rounded-full bg-rose-500/20 text-rose-400 mb-1">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h4 class="text-xl font-extrabold text-rose-400">Shortage Action Required!</h4>
+        <p class="text-sm text-slate-300">
+          Your current attendance is <strong class="text-white">${currentPct}%</strong> (${present}/${total} classes).
+        </p>
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-850 mt-3 inline-block">
+          <span class="text-xs text-slate-400 block uppercase font-bold tracking-wider mb-1">Required Attendance</span>
+          <span class="text-3xl font-black text-rose-400">${requiredConsec}</span>
+          <span class="text-xs text-slate-400 block mt-1">consecutive upcoming classes must be attended to hit ${targetPct}%</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// MONTHLY CALENDAR VIEW LOGIC
+function renderStudentCalendar() {
+  const calendarContainer = document.getElementById("student-calendar-grid");
+  const monthYearHeader = document.getElementById("calendar-month-year");
+  if (!calendarContainer) return;
+
+  const date = new Date(currentCalendarYear, currentCalendarMonth, 1);
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  monthYearHeader.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+  const firstDayIndex = date.getDay();
+  const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+
+  const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const student = students.find(s => s.id === currentUser.profileId);
+  const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+  const studentRecords = records.filter(r => r.student_id === student.id);
+
+  calendarContainer.innerHTML = "";
+
+  // Day Headers
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  dayNames.forEach(d => {
+    const head = document.createElement("div");
+    head.className = "text-center text-xs font-bold text-slate-500 uppercase py-2";
+    head.textContent = d;
+    calendarContainer.appendChild(head);
+  });
+
+  // Empty slots before 1st of month
+  for (let x = 0; x < firstDayIndex; x++) {
+    const empty = document.createElement("div");
+    empty.className = "h-20 bg-slate-950/30 rounded-xl border border-slate-850/40 opacity-40";
+    calendarContainer.appendChild(empty);
+  }
+
+  // Days of month
+  for (let day = 1; day <= lastDay; day++) {
+    const dayStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayRecs = studentRecords.filter(r => r.date === dayStr);
+
+    const cell = document.createElement("div");
+    cell.className = "h-20 bg-slate-900/60 border border-slate-800 rounded-xl p-2 flex flex-col justify-between hover:border-indigo-500/50 transition-all cursor-pointer";
+    
+    let statusDots = "";
+    if (dayRecs.length > 0) {
+      const pCount = dayRecs.filter(r => r.status === "Present").length;
+      const aCount = dayRecs.filter(r => r.status === "Absent").length;
+      const lCount = dayRecs.filter(r => r.status === "Late").length;
+
+      statusDots = `
+        <div class="flex items-center space-x-1 mt-1">
+          ${pCount > 0 ? `<span class="h-2.5 w-2.5 rounded-full bg-emerald-500" title="${pCount} Present"></span>` : ''}
+          ${aCount > 0 ? `<span class="h-2.5 w-2.5 rounded-full bg-rose-500" title="${aCount} Absent"></span>` : ''}
+          ${lCount > 0 ? `<span class="h-2.5 w-2.5 rounded-full bg-amber-500" title="${lCount} Late"></span>` : ''}
+        </div>
+      `;
+    }
+
+    cell.innerHTML = `
+      <span class="text-xs font-bold text-slate-300">${day}</span>
+      ${statusDots}
+    `;
+
+    cell.addEventListener("click", () => {
+      if (dayRecs.length > 0) {
+        showToast(`${dayStr}: ${dayRecs.map(r => r.status).join(", ")}`);
+      }
+    });
+
+    calendarContainer.appendChild(cell);
+  }
+}
+
+function prevMonth() {
+  currentCalendarMonth--;
+  if (currentCalendarMonth < 0) {
+    currentCalendarMonth = 11;
+    currentCalendarYear--;
+  }
+  renderStudentCalendar();
+}
+
+function nextMonth() {
+  currentCalendarMonth++;
+  if (currentCalendarMonth > 11) {
+    currentCalendarMonth = 0;
+    currentCalendarYear++;
+  }
+  renderStudentCalendar();
+}
+
+// LEAVE APPLICATION SUBMISSION LOGIC
+function handleLeaveSubmit(e) {
+  e.preventDefault();
+
+  const subjectId = document.getElementById("leave-subject-select").value;
+  const dateVal = document.getElementById("leave-date-input").value;
+  const reasonVal = document.getElementById("leave-reason-input").value.trim();
+
+  if (!subjectId || !dateVal || !reasonVal) {
+    showToast("Please fill all required fields.", "error");
+    return;
+  }
+
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+  const newLeave = {
+    id: `leave_${leaves.length + 1}`,
+    student_id: currentUser.profileId,
+    subject_id: subjectId,
+    date: dateVal,
+    reason: reasonVal,
+    status: "Pending",
+    created_at: new Date().toISOString()
+  };
+
+  leaves.push(newLeave);
+  AttendanceDB.saveData(STORAGE_KEYS.LEAVES, leaves);
+
+  showToast("Leave application submitted for approval!");
+  document.getElementById("student-leave-form").reset();
+  loadStudentLeaveApplications();
+}
+
+function loadStudentLeaveApplications() {
+  const container = document.getElementById("student-leave-list");
+  if (!container) return;
+
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+  const subjects = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const myLeaves = leaves.filter(l => l.student_id === currentUser.profileId);
+
+  container.innerHTML = "";
+
+  if (myLeaves.length === 0) {
+    container.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">No leave applications submitted yet.</p>`;
+    return;
+  }
+
+  myLeaves.forEach(l => {
+    const subject = subjects.find(s => s.id === l.subject_id);
+    const badgeColor = l.status === "Pending" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                       l.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                       "bg-rose-500/10 text-rose-400 border-rose-500/20";
+
+    const card = document.createElement("div");
+    card.className = "bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex justify-between items-center";
+    card.innerHTML = `
+      <div class="space-y-1">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-slate-200 text-sm">${subject ? subject.name : 'Subject'}</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">${l.status}</span>
+        </div>
+        <p class="text-xs text-slate-400">Date: <strong class="text-slate-200">${formatDateString(l.date)}</strong></p>
+        <p class="text-xs text-slate-400 italic">"${l.reason}"</p>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// STUDENT HISTORY LOG TABLE WITH SEARCH & FILTER
+function renderStudentHistoryTable() {
+  const tbody = document.getElementById("student-history-tbody");
+  if (!tbody) return;
+
+  const query = (document.getElementById("history-search-input")?.value || "").trim().toLowerCase();
+  const statusFilter = document.getElementById("history-status-filter")?.value || "ALL";
+
+  const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const student = students.find(s => s.id === currentUser.profileId);
+  const subjects = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+
+  let studentRecords = records.filter(r => r.student_id === student.id);
+
+  if (statusFilter !== "ALL") {
+    studentRecords = studentRecords.filter(r => r.status === statusFilter);
+  }
+
   studentRecords.sort((a, b) => b.date.localeCompare(a.date));
 
-  if (studentRecords.length === 0) {
+  tbody.innerHTML = "";
+
+  const filtered = studentRecords.filter(r => {
+    const subj = subjects.find(s => s.id === r.subject_id);
+    const subjName = subj ? subj.name.toLowerCase() : "";
+    return subjName.includes(query) || r.date.includes(query);
+  });
+
+  if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="3" class="px-6 py-8 text-center text-slate-400 text-sm">
-          No historical records found.
+          No matching records found.
         </td>
       </tr>
     `;
@@ -750,7 +1279,7 @@ function loadStudentHistoryTable(studentRecords, subjects) {
     Late: "bg-amber-500/10 text-amber-400 border border-amber-500/20"
   };
 
-  studentRecords.forEach(r => {
+  filtered.forEach(r => {
     const subject = subjects.find(s => s.id === r.subject_id);
     const row = document.createElement("tr");
     row.className = "border-b border-slate-700/40 hover:bg-slate-750/30 transition-colors";
@@ -780,7 +1309,6 @@ function formatDateString(dateStr) {
 }
 
 function showToast(message, type = "success") {
-  // Check if toast already exists
   let toast = document.getElementById("toast-notification");
   if (!toast) {
     toast = document.createElement("div");
@@ -812,12 +1340,10 @@ function showToast(message, type = "success") {
     `;
   }
 
-  // Animate in
   setTimeout(() => {
     toast.classList.remove("translate-y-10", "opacity-0");
   }, 10);
 
-  // Animate out
   setTimeout(() => {
     toast.classList.add("translate-y-10", "opacity-0");
   }, 3500);
