@@ -385,6 +385,8 @@ function handleLogout() {
   selectedSubjectId = "";
   tempAttendance = {};
   localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  const mobileNav = document.getElementById("mobile-bottom-nav");
+  if (mobileNav) mobileNav.classList.add("hidden");
   showView("login-view");
   
   document.getElementById("login-form").reset();
@@ -395,10 +397,72 @@ function showDashboard() {
   if (currentUser.role === "Professor") {
     showView("professor-dashboard");
     initProfessorDashboard();
+    renderMobileBottomNav("Professor");
   } else {
     showView("student-dashboard");
     initStudentDashboard();
+    renderMobileBottomNav("Student");
   }
+}
+
+function renderMobileBottomNav(role) {
+  let navEl = document.getElementById("mobile-bottom-nav");
+  if (!navEl) {
+    navEl = document.createElement("nav");
+    navEl.id = "mobile-bottom-nav";
+    document.body.appendChild(navEl);
+  }
+
+  navEl.className = "fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-slate-950/90 backdrop-blur-lg border-t border-slate-800/80 px-2 py-1.5 flex items-center justify-around shadow-2xl transition-all";
+
+  if (role === "Student") {
+    navEl.innerHTML = `
+      <button onclick="switchStudentTab('overview')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 focus:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span class="text-[10px] font-semibold">Overview</span>
+      </button>
+      <button onclick="switchStudentTab('calculator')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 focus:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        <span class="text-[10px] font-semibold">Calculator</span>
+      </button>
+      <button onclick="switchStudentTab('calendar')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 focus:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span class="text-[10px] font-semibold">Calendar</span>
+      </button>
+      <button onclick="switchStudentTab('leave')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 focus:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span class="text-[10px] font-semibold">Leaves</span>
+      </button>
+      <button onclick="switchStudentTab('history')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 focus:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-[10px] font-semibold">Logs</span>
+      </button>
+    `;
+  } else {
+    navEl.innerHTML = `
+      <button onclick="scrollToProfSection('students-attendance-grid')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <span class="text-[10px] font-semibold">Grid</span>
+      </button>
+      <button onclick="scrollToProfSection('prof-leave-applications')" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span class="text-[10px] font-semibold">Leaves</span>
+      </button>
+      <button onclick="bulkSetStatus('Present')" class="flex flex-col items-center p-1.5 text-emerald-400 hover:text-emerald-300 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <span class="text-[10px] font-semibold">All Present</span>
+      </button>
+      <button onclick="exportAttendanceHistory()" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 transition">
+        <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span class="text-[10px] font-semibold">Export</span>
+      </button>
+    `;
+  }
+}
+
+function scrollToProfSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
 }
 
 // PROFESSOR DASHBOARD LOGIC
