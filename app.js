@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
   RECORDS: "attendance_records",
   LEAVES: "attendance_leaves",
   CURRENT_USER: "attendance_current_user",
-  DB_INITIALIZED: "attendance_db_initialized_v2"
+  DB_INITIALIZED: "attendance_db_initialized_v3"
 };
 
 // Seed Data & Storage Operations
@@ -22,7 +22,7 @@ class AttendanceDB {
       return; // Already initialized
     }
 
-    console.log("Initializing database with v2 seed data...");
+    console.log("Initializing database with v3 seed data...");
 
     // 1. Create Users (2 Professors, 10 Students)
     const users = [
@@ -87,7 +87,7 @@ class AttendanceDB {
     const today = new Date();
     let recordCounter = 1;
 
-    for (let i = 14; i >= 1; i--) {
+    for (let i = 25; i >= 1; i--) {
       const date = new Date();
       date.setDate(today.getDate() - i);
       const dateString = date.toISOString().split("T")[0];
@@ -769,14 +769,17 @@ function exportMonthlyAttendanceHistory() {
 
   const monthlyRecords = records.filter(r => {
     if (r.subject_id !== selectedSubjectId) return false;
-    const d = new Date(r.date);
-    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    const parts = (r.date || "").split("-");
+    if (parts.length !== 3) return false;
+    const rYear = parseInt(parts[0], 10);
+    const rMonth = parseInt(parts[1], 10) - 1; // 0-indexed: 0=Jan, 7=Aug
+    return rMonth === selectedMonth && rYear === selectedYear;
   });
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   if (monthlyRecords.length === 0) {
-    showToast(`No records found for ${monthNames[selectedMonth]} ${selectedYear}.`, "error");
+    showToast(`No records found for ${monthNames[selectedMonth]} ${selectedYear}. Try another month!`, "error");
     return;
   }
 
