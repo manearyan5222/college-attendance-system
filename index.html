@@ -270,13 +270,52 @@
             Mark All Absent
           </button>
           <button id="export-excel" disabled class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer">
-            Export CSV
+            Export All CSV
           </button>
           <button id="submit-attendance" disabled class="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-lg cursor-pointer">
             Submit
           </button>
         </div>
 
+      </div>
+
+      <!-- Monthly CSV Report Generator Panel -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/40 border border-slate-800/60 rounded-2xl px-6 py-3.5 glass-panel">
+        <div class="flex items-center space-x-2 text-xs font-bold text-slate-300">
+          <svg class="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Monthly CSV Report Generator</span>
+        </div>
+
+        <div class="flex items-center space-x-2 w-full sm:w-auto">
+          <select id="export-month-select" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none cursor-pointer">
+            <option value="0">January</option>
+            <option value="1">February</option>
+            <option value="2">March</option>
+            <option value="3">April</option>
+            <option value="4">May</option>
+            <option value="5">June</option>
+            <option value="6">July</option>
+            <option value="7" selected>August</option>
+            <option value="8">September</option>
+            <option value="9">October</option>
+            <option value="10">November</option>
+            <option value="11">December</option>
+          </select>
+
+          <select id="export-year-select" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none cursor-pointer">
+            <option value="2026" selected>2026</option>
+            <option value="2025">2025</option>
+          </select>
+
+          <button id="export-monthly-csv" disabled class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30 text-xs font-semibold transition cursor-pointer">
+            <svg class="h-3.5 w-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Export Monthly CSV</span>
+          </button>
+        </div>
       </div>
 
       <!-- Leave Requests Review Panel for Professor -->

@@ -338,6 +338,9 @@ function setupEventListeners() {
   const exportExcelBtn = document.getElementById("export-excel");
   if (exportExcelBtn) exportExcelBtn.addEventListener("click", exportAttendanceHistory);
 
+  const exportMonthlyBtn = document.getElementById("export-monthly-csv");
+  if (exportMonthlyBtn) exportMonthlyBtn.addEventListener("click", exportMonthlyAttendanceHistory);
+
   // Leave application form submit
   const leaveForm = document.getElementById("student-leave-form");
   if (leaveForm) leaveForm.addEventListener("submit", handleLeaveSubmit);
@@ -452,9 +455,9 @@ function renderMobileBottomNav(role) {
         <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
         <span class="text-[10px] font-semibold">All Present</span>
       </button>
-      <button onclick="exportAttendanceHistory()" class="flex flex-col items-center p-1.5 text-slate-400 hover:text-indigo-400 transition">
+      <button onclick="exportMonthlyAttendanceHistory()" class="flex flex-col items-center p-1.5 text-indigo-400 hover:text-indigo-300 transition">
         <svg class="h-5 w-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span class="text-[10px] font-semibold">Export</span>
+        <span class="text-[10px] font-semibold">Monthly CSV</span>
       </button>
     `;
   }
@@ -492,6 +495,7 @@ function initProfessorDashboard() {
   
   document.getElementById("submit-attendance").disabled = true;
   document.getElementById("export-excel").disabled = true;
+  if (document.getElementById("export-monthly-csv")) document.getElementById("export-monthly-csv").disabled = true;
   document.getElementById("btn-mark-all-present").disabled = true;
   document.getElementById("btn-mark-all-absent").disabled = true;
 
@@ -518,6 +522,7 @@ function loadAttendanceGrid() {
 
   document.getElementById("submit-attendance").disabled = false;
   document.getElementById("export-excel").disabled = false;
+  if (document.getElementById("export-monthly-csv")) document.getElementById("export-monthly-csv").disabled = false;
   document.getElementById("btn-mark-all-present").disabled = false;
   document.getElementById("btn-mark-all-absent").disabled = false;
   
@@ -741,6 +746,93 @@ function exportAttendanceHistory() {
   document.body.removeChild(link);
 
   showToast("CSV report exported successfully!");
+}
+
+function exportMonthlyAttendanceHistory() {
+  if (!selectedSubjectId) {
+    showToast("Please select a subject first.", "error");
+    return;
+  }
+
+  const monthSelect = document.getElementById("export-month-select");
+  const yearSelect = document.getElementById("export-year-select");
+  
+  const selectedMonth = parseInt(monthSelect ? monthSelect.value : new Date().getMonth(), 10);
+  const selectedYear = parseInt(yearSelect ? yearSelect.value : new Date().getFullYear(), 10);
+
+  const subjects = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const subject = subjects.find(s => s.id === selectedSubjectId);
+  const subjectName = subject ? subject.name : "Subject";
+  
+  const records = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+  const students = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+
+  const monthlyRecords = records.filter(r => {
+    if (r.subject_id !== selectedSubjectId) return false;
+    const d = new Date(r.date);
+    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+  });
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  if (monthlyRecords.length === 0) {
+    showToast(`No records found for ${monthNames[selectedMonth]} ${selectedYear}.`, "error");
+    return;
+  }
+
+  monthlyRecords.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    const sA = students.find(s => s.id === a.student_id)?.full_name || "";
+    const sB = students.find(s => s.id === b.student_id)?.full_name || "";
+    return sA.localeCompare(sB);
+  });
+
+  const csvRows = [
+    `"Monthly Attendance Report - ${subjectName}"`,
+    `"Month: ${monthNames[selectedMonth]} ${selectedYear}"`,
+    `""`,
+    `"Date","Student Name","Roll No","Division","Status"`
+  ];
+
+  monthlyRecords.forEach(r => {
+    const student = students.find(s => s.id === r.student_id);
+    const row = [
+      r.date,
+      `"${student ? student.full_name : 'Unknown'}"`,
+      student ? student.roll_no : "",
+      student ? student.division : "",
+      r.status
+    ];
+    csvRows.push(row.join(","));
+  });
+
+  csvRows.push(`""`);
+  csvRows.push(`"--- MONTHLY STUDENT SUMMARY ---"`);
+  csvRows.push(`"Student Name","Roll No","Division","Present Count","Absent Count","Late Count","Monthly Attendance %"`);
+
+  const enrolledStudents = students.filter(s => AttendanceDB.isStudentEnrolled(s, selectedSubjectId));
+  enrolledStudents.forEach(s => {
+    const sRecs = monthlyRecords.filter(r => r.student_id === s.id);
+    const pCount = sRecs.filter(r => r.status === "Present").length;
+    const aCount = sRecs.filter(r => r.status === "Absent").length;
+    const lCount = sRecs.filter(r => r.status === "Late").length;
+    const total = sRecs.length;
+    const pct = total > 0 ? Math.round(((pCount + lCount) / total) * 100) : 0;
+
+    csvRows.push(`"${s.full_name}","${s.roll_no}","${s.division}",${pCount},${aCount},${lCount},"${pct}%"`);
+  });
+
+  const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+  const encodedUri = encodeURI(csvContent);
+  
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${subjectName.replace(/\s+/g, "_")}_${monthNames[selectedMonth]}_${selectedYear}_Attendance_Report.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast(`Exported Monthly CSV for ${monthNames[selectedMonth]} ${selectedYear}!`);
 }
 
 function loadProfessorLeaveApplications() {
