@@ -41,6 +41,9 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-javascript@2"></script>
+
   <style>
     .glass-panel {
       background: rgba(15, 23, 42, 0.45);
@@ -686,15 +689,36 @@
         </div>
       </div>
 
-      <!-- Cloud Sync & Multi-Device Testing Architecture Note -->
-      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 text-xs space-y-2">
-        <h5 class="font-bold text-amber-400 flex items-center">
-          <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Multi-Device Shared Persistence Note
-        </h5>
-        <p class="text-slate-400 leading-relaxed">
-          Local Storage maintains fast client-side offline execution per browser. For multi-device testing (e.g. syncing teacher attendance to student phones across devices), use the <strong class="text-indigo-300">Export JSON Backup</strong> / <strong class="text-emerald-300">Import JSON Backup</strong> tools above, or connect a shared cloud REST API endpoint (Supabase / Firebase Firestore).
-        </p>
+      <!-- Supabase Shared Database Configuration Section -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h5 class="font-bold text-xs text-slate-200 uppercase tracking-wider flex items-center">
+            <svg class="h-4 w-4 mr-1.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 001-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z" />
+            </svg>
+            Supabase Shared Database (Multi-Device Sync)
+          </h5>
+          <span id="supabase-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">🟡 Demo Mode (localStorage)</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Supabase Project URL</label>
+            <input type="text" id="supabase-url-input" placeholder="https://xyzcompany.supabase.co" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Supabase Public Anon Key</label>
+            <input type="password" id="supabase-key-input" placeholder="eyJh..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div class="flex items-center space-x-2">
+            <button id="btn-save-supabase-config" class="px-3.5 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/30 rounded-xl text-xs font-bold transition cursor-pointer">Connect Supabase</button>
+            <button id="btn-seed-supabase-cloud" class="px-3.5 py-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30 rounded-xl text-xs font-bold transition cursor-pointer">Push 70 Students to Cloud</button>
+          </div>
+          <button id="btn-disconnect-supabase" class="text-xs text-slate-400 hover:text-rose-400 underline">Disconnect Cloud</button>
+        </div>
       </div>
 
     </div>

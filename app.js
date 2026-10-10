@@ -485,6 +485,166 @@ function setupEventListeners() {
 
   const clearLogsBtn = document.getElementById("btn-clear-attendance-logs");
   if (clearLogsBtn) clearLogsBtn.addEventListener("click", handleClearLogs);
+
+  // Supabase Cloud Controls
+  const saveSupabaseBtn = document.getElementById("btn-save-supabase-config");
+  if (saveSupabaseBtn) saveSupabaseBtn.addEventListener("click", handleSaveSupabaseConfig);
+
+  const seedSupabaseBtn = document.getElementById("btn-seed-supabase-cloud");
+  if (seedSupabaseBtn) seedSupabaseBtn.addEventListener("click", handleSeedSupabaseCloud);
+
+  const disconnectSupabaseBtn = document.getElementById("btn-disconnect-supabase");
+  if (disconnectSupabaseBtn) disconnectSupabaseBtn.addEventListener("click", handleDisconnectSupabase);
+}
+
+// SUPABASE CLOUD DATABASE HELPER
+const SUPABASE_CONFIG_KEY = "attendance_supabase_config";
+
+class CloudDB {
+  static getClient() {
+    if (!window.supabase) return null;
+    const config = JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY) || "{}");
+    if (config.url && config.key) {
+      try {
+        if (!window._supabaseClientInstance || window._supabaseClientUrl !== config.url) {
+          window._supabaseClientInstance = window.supabase.createClient(config.url, config.key);
+          window._supabaseClientUrl = config.url;
+        }
+        return window._supabaseClientInstance;
+      } catch (err) {
+        console.error("Supabase client init error:", err);
+      }
+    }
+    return null;
+  }
+
+  static isConfigured() {
+    return !!CloudDB.getClient();
+  }
+
+  static updateConfig(url, key) {
+    localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url, key }));
+    window._supabaseClientInstance = null;
+  }
+
+  static clearConfig() {
+    localStorage.removeItem(SUPABASE_CONFIG_KEY);
+    window._supabaseClientInstance = null;
+  }
+
+  static async seedCloudData() {
+    const client = CloudDB.getClient();
+    if (!client) throw new Error("Supabase is not connected. Please enter URL and Anon Key first.");
+
+    const users = AttendanceDB.getData(STORAGE_KEYS.USERS);
+    const profs = AttendanceDB.getData(STORAGE_KEYS.PROFESSORS);
+    const studs = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+    const subjs = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+    const recs = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+    const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+
+    const { error: err1 } = await client.from("users").upsert(users);
+    if (err1) throw err1;
+
+    const { error: err2 } = await client.from("professors").upsert(profs);
+    if (err2) throw err2;
+
+    const { error: err3 } = await client.from("students").upsert(studs);
+    if (err3) throw err3;
+
+    const { error: err4 } = await client.from("subjects").upsert(subjs);
+    if (err4) throw err4;
+
+    for (let i = 0; i < recs.length; i += 300) {
+      const batch = recs.slice(i, i + 300);
+      const { error: err5 } = await client.from("attendance_records").upsert(batch, { onConflict: "student_id,subject_id,date" });
+      if (err5) throw err5;
+    }
+
+    if (leaves.length > 0) {
+      const { error: err6 } = await client.from("leave_requests").upsert(leaves);
+      if (err6) throw err6;
+    }
+
+    return true;
+  }
+}
+
+// ADMIN & DATA MANAGEMENT HANDLERS
+function openAdminModal() {
+  const modal = document.getElementById("admin-data-modal");
+  if (!modal) return;
+
+  const profs = AttendanceDB.getData(STORAGE_KEYS.PROFESSORS);
+  const studs = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const subjs = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const recs = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+
+  if (document.getElementById("admin-stat-teachers")) document.getElementById("admin-stat-teachers").textContent = profs.length;
+  if (document.getElementById("admin-stat-students")) document.getElementById("admin-stat-students").textContent = studs.length;
+  if (document.getElementById("admin-stat-subjects")) document.getElementById("admin-stat-subjects").textContent = subjs.length;
+  if (document.getElementById("admin-stat-records")) document.getElementById("admin-stat-records").textContent = recs.length;
+  if (document.getElementById("admin-stat-leaves")) document.getElementById("admin-stat-leaves").textContent = leaves.length;
+
+  const config = JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY) || "{}");
+  const urlInput = document.getElementById("supabase-url-input");
+  const keyInput = document.getElementById("supabase-key-input");
+  const badge = document.getElementById("supabase-status-badge");
+
+  if (urlInput) urlInput.value = config.url || "";
+  if (keyInput) keyInput.value = config.key || "";
+
+  if (badge) {
+    if (CloudDB.isConfigured()) {
+      badge.textContent = "🟢 Connected to Supabase Cloud DB";
+      badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+    } else {
+      badge.textContent = "🟡 Demo Mode (localStorage)";
+      badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    }
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function handleSaveSupabaseConfig() {
+  const url = document.getElementById("supabase-url-input").value.trim();
+  const key = document.getElementById("supabase-key-input").value.trim();
+
+  if (!url || !key) {
+    showToast("Please enter both Supabase URL and Anon Key.", "error");
+    return;
+  }
+
+  CloudDB.updateConfig(url, key);
+  if (CloudDB.isConfigured()) {
+    showToast("Connected to Supabase Cloud Database!");
+    openAdminModal();
+  } else {
+    showToast("Failed to initialize Supabase client.", "error");
+  }
+}
+
+async function handleSeedSupabaseCloud() {
+  if (!CloudDB.isConfigured()) {
+    showToast("Please connect Supabase first.", "error");
+    return;
+  }
+
+  showToast("Pushing 70 students & 7 teachers to Supabase Cloud...");
+  try {
+    await CloudDB.seedCloudData();
+    showToast("Pushed all 70 students & 7 teachers to Supabase Cloud!");
+  } catch (err) {
+    showToast("Cloud seeding error: " + err.message, "error");
+  }
+}
+
+function handleDisconnectSupabase() {
+  CloudDB.clearConfig();
+  showToast("Disconnected from Supabase Cloud.");
+  openAdminModal();
 }
 
 // ADMIN & DATA MANAGEMENT HANDLERS
@@ -879,6 +1039,16 @@ function updateClassStatsBar(totalCount) {
   }
 }
 
+function asyncSubmitAttendanceCloud(newBatch) {
+  if (CloudDB.isConfigured()) {
+    CloudDB.getClient().from("attendance_records").upsert(newBatch, { onConflict: "student_id,subject_id,date" })
+      .then(({ error }) => {
+        if (error) console.error("Supabase attendance sync error:", error);
+        else showToast("Synced attendance to Supabase Cloud Database!");
+      }).catch(err => console.error(err));
+  }
+}
+
 function submitAttendance() {
   if (!selectedSubjectId) return;
 
@@ -886,18 +1056,22 @@ function submitAttendance() {
   let updatedRecords = records.filter(r => !(r.subject_id === selectedSubjectId && r.date === selectedDate));
   
   let newRecordCounter = records.length + 1;
+  const newBatch = [];
 
   Object.keys(tempAttendance).forEach(studentId => {
-    updatedRecords.push({
+    const rec = {
       id: `rec_${newRecordCounter++}`,
       student_id: studentId,
       subject_id: selectedSubjectId,
       date: selectedDate,
       status: tempAttendance[studentId]
-    });
+    };
+    updatedRecords.push(rec);
+    newBatch.push(rec);
   });
 
   AttendanceDB.saveData(STORAGE_KEYS.RECORDS, updatedRecords);
+  asyncSubmitAttendanceCloud(newBatch);
   showToast("Attendance submitted successfully!");
   loadAttendanceGrid();
 }
