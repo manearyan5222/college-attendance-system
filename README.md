@@ -8,7 +8,7 @@
 
   [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-GitHub_Pages-6366f1?style=for-the-badge&logo=googlechrome&logoColor=white)](https://manearyan5222.github.io/college-attendance-system/)
   [![GitHub Repo](https://img.shields.io/badge/📦_GitHub-Repository-24292e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/manearyan5222/college-attendance-system)
-  [![PWA Ready](https://img.shields.io/badge/📲_PWA-Installable-10b981?style=for-the-badge&logo=pwa&logoColor=white)](#-mobile--pwa-features)
+  [![PWA Ready](https://img.shields.io/badge/📲_PWA-Installable-10b981?style=for-the-badge&logo=pwa&logoColor=white)](#-mobile--pwa-experience)
   [![Android Native](https://img.shields.io/badge/🤖_Android-Jetpack_Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#-android-native-wrapper)
 
 </div>
@@ -17,7 +17,7 @@
 
 ## 🌟 Overview
 
-**Apex College Attendance Portal** is a feature-rich, high-performance role-based attendance management system built for educational institutions. Designed with a mobile-first, dark-theme glassmorphism aesthetic, it empowers **Professors** with rapid attendance logging and leave approvals, while giving **Students** deep visual analytics, attendance goal planning ("Can I skip next class?"), and absence justification tracking.
+**Apex College Attendance Portal** is a feature-rich, high-performance role-based attendance management system built for educational institutions. Designed with a mobile-first, dark-theme glassmorphism aesthetic, it supports **7 Teacher Accounts** and **70 Student Accounts** across **14 Courses** with **30 Days of Historical Attendance Data**.
 
 > [!TIP]
 > **Try the Live Application Now:** [https://manearyan5222.github.io/college-attendance-system/](https://manearyan5222.github.io/college-attendance-system/)
@@ -26,7 +26,7 @@
 
 ## 🔑 Key Features
 
-### 👨‍🏫 For Professors / Faculty
+### 👨‍🏫 For Professors / Faculty (7 Accounts)
 - **⚡ Rapid Attendance Grid**: High-speed toggle buttons (`Present` / `Absent` / `Late`) with live color badges.
 - **🔍 Live Student Search**: Filter student cards dynamically by name or roll number.
 - **✅ Bulk Marking**: 1-Tap `Mark All Present` or `Mark All Absent` options for fast entry.
@@ -36,7 +36,7 @@
   - **All-Time CSV Export**: Download full course attendance logs.
   - **Monthly CSV Export**: Select any month/year to generate a breakdown report containing daily logs and monthly student percentages.
 
-### 👨‍🎓 For Students
+### 👨‍🎓 For Students (70 Accounts - S001 to S070)
 - **📊 Interactive Gauges & Radial Charts**: SVG percentage rings and Chart.js doughnut charts per subject.
 - **🧮 Attendance Goal Calculator ("Can I Skip Next Class?")**: 
   - Set target thresholds (e.g. 75%, 80%, 85%).
@@ -46,29 +46,50 @@
 - **🔍 Searchable Attendance Logs**: Live search & status filters (`Present`, `Absent`, `Late`).
 - **⚠️ Shortage Warning Banners**: Automatic alert badges when attendance in any subject drops below mandatory **75% semester exam threshold**.
 
-### 📱 Mobile & PWA Experience
-- **📱 Floating Bottom App Bar**: Native iOS/Android style bottom navigation bar on smartphones.
-- **📲 Progressive Web App (PWA)**: Installable directly to mobile home screens with offline caching via `sw.js`.
-- **⚡ 1-Click Quick Switcher**: Integrated top nav dropdown to switch between Demo Professor and Student accounts instantly.
+### ⚙️ Admin & Data Management Panel
+- **📊 Live Database Statistics**: Real-time counter of Teachers (7), Students (70), Subjects (14), Attendance Records, and Leaves.
+- **📥 JSON Database Backup Export**: Download the complete database state as a JSON file with 1 click.
+- **📤 JSON Database Backup Import**: Upload and restore a JSON database backup file to sync state across browsers.
+- **🔄 Re-Seed Dataset**: Re-seeds default 70 students and 7 professors dataset cleanly.
+- **🧹 Reset Attendance Records**: Clear attendance logs while preserving user accounts.
 
 ---
 
-## 🔐 Demo Credentials
+## 🔐 7 Teacher Accounts & Sample Credentials
 
-Use these pre-seeded accounts to log in and test both roles:
+All accounts use password: `password123`
 
-| Role | Name | Email | Password | Details / Assigned Subjects |
+| ID | Role | Name | Email | Department / Assigned Courses |
 | :--- | :--- | :--- | :--- | :--- |
-| **Professor** | Dr. Sarah Jenkins | `sarah.jenkins@college.edu` | `password123` | Computer Networks, Software Engineering, Web Dev |
-| **Professor** | Dr. David Miller | `david.miller@college.edu` | `password123` | Database Systems, Artificial Intelligence |
-| **Student** | **Aryan Mane** | `aryan.mane@college.edu` | `password123` | Roll No. 59 | Div A | Computer Engineering |
-| **Student** | Jessica Taylor | `jessica.taylor@college.edu` | `password123` | Roll No. 01 | Div A | Computer Engineering |
+| `prof_1` | **Professor** | Dr. Sarah Jenkins | `sarah.jenkins@college.edu` | Computer Engineering (Networks, Software Eng) |
+| `prof_2` | **Professor** | Dr. David Miller | `david.miller@college.edu` | Information Technology (Database Systems, Web Dev) |
+| `prof_3` | **Professor** | Prof. Robert Chen | `robert.chen@college.edu` | AI & Data Science (Machine Learning, AI) |
+| `prof_4` | **Professor** | Dr. Ananya Rao | `ananya.rao@college.edu` | Computer Engineering (DSA, Operating Systems) |
+| `prof_5` | **Professor** | Prof. Marcus Vance | `marcus.vance@college.edu` | Cyber Security (Cybersecurity, Cloud Computing) |
+| `prof_6` | **Professor** | Dr. Vikram Joshi | `vikram.joshi@college.edu` | Electronics & Telecom (Signal Proc, Embedded Sys) |
+| `prof_7` | **Professor** | Prof. Elena Rostova | `elena.rostova@college.edu` | Mechanical Engineering (Robotics, Fluid Mech) |
+
+---
+
+## 👨‍🎓 70 Student Accounts (S001 to S070)
+
+All student accounts use password: `password123`
+
+| ID | Roll No | Name | Email | Branch | Division |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `stud_1` | **59** | **Aryan Mane** | `aryan.mane@college.edu` | Computer Engineering | Div A |
+| `stud_2` | 01 | Jessica Taylor | `jessica.taylor@college.edu` | Computer Engineering | Div A |
+| `stud_3` | 02 | Rohan Sharma | `student03@college.edu` | Computer Engineering | Div A |
+| `stud_4` | 03 | Priya Patel | `student04@college.edu` | Information Technology | Div B |
+| `stud_5` | 04 | Liam Johnson | `student05@college.edu` | Computer Engineering | Div A |
+| ... | ... | ... | ... | ... | ... |
+| `stud_70` | 70 | Himansh Kohli | `student70@college.edu` | Computer Engineering | Div A |
+
+*(Use the top navigation bar **1-Click Quick Account Switcher** to switch between any of the 77 accounts instantly!)*
 
 ---
 
 ## 🗄️ Relational Database Schema
-
-The client-side `localStorage` engine maintains standard relational data structures:
 
 ```mermaid
 erDiagram
@@ -130,38 +151,25 @@ erDiagram
 
 ---
 
-## 📂 Repository Structure
+## 🌐 Data Persistence & Cloud Shared DB Note
 
-```
-college-attendance-system/
-├── index.html              # Main Single Page Application (SPA) layout & UI templates
-├── app.js                  # Core business logic, localStorage DB, analytics, & CSV exporter
-├── manifest.json           # Progressive Web App (PWA) configuration
-├── sw.js                   # Service Worker for offline asset caching
-├── app_icon.jpg            # High-resolution PWA and app launcher icon
-├── README.md               # Project documentation
-└── college-attendance-android/ # Native Android Studio wrapper (Jetpack Compose)
-```
+1. **Client-Side Persistence (`localStorage`)**:
+   - Out-of-the-box zero config execution on GitHub Pages.
+   - Saves all marked attendance and leaves locally per browser.
+2. **Multi-Device JSON Sync**:
+   - Use the **Admin / Data** panel to export `apex_college_attendance_db_backup.json` and import it on another device/phone.
+3. **Shared Cloud Database Architecture (Supabase / Firebase)**:
+   - For real-time multi-device cloud synchronization across smartphones, connect a shared backend REST API (Supabase Postgres or Firebase Firestore) using the backend bridge configuration.
 
 ---
 
 ## 🛠️ Local Setup & Running
 
-### Option 1: Web Application
-1. Clone or download the repository:
+1. Clone repository:
    ```bash
    git clone https://github.com/manearyan5222/college-attendance-system.git
    ```
-2. Open `index.html` directly in any modern web browser (Chrome, Edge, Firefox, Safari).
-
-### Option 2: Mobile PWA Installation
-1. Open [https://manearyan5222.github.io/college-attendance-system/](https://manearyan5222.github.io/college-attendance-system/) on your smartphone.
-2. Tap **Share** (iOS Safari) or **Settings (⋮)** (Android Chrome).
-3. Select **"Add to Home Screen"**.
-
-### Option 3: Android Native Wrapper
-1. Open the `./college-attendance-android` directory in **Android Studio**.
-2. Sync Gradle dependencies and run on an Android Emulator or physical device.
+2. Open `index.html` directly in any modern web browser.
 
 ---
 

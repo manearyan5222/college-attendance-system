@@ -3,7 +3,7 @@
  */
 
 // Initialize Database State
-const DB_VERSION = "2.0.0";
+const DB_VERSION = "2.5.0";
 const STORAGE_KEYS = {
   USERS: "attendance_users",
   STUDENTS: "attendance_students",
@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
   RECORDS: "attendance_records",
   LEAVES: "attendance_leaves",
   CURRENT_USER: "attendance_current_user",
-  DB_INITIALIZED: "attendance_db_initialized_v3"
+  DB_INITIALIZED: "attendance_db_initialized_v4"
 };
 
 // Seed Data & Storage Operations
@@ -22,72 +22,118 @@ class AttendanceDB {
       return; // Already initialized
     }
 
-    console.log("Initializing database with v3 seed data...");
+    console.log("Initializing database with 7 Teachers and 70 Students seed data...");
 
-    // 1. Create Users (2 Professors, 10 Students)
-    const users = [
-      // Professors
-      { id: "u_p1", email: "sarah.jenkins@college.edu", password: "password123", role: "Professor" },
-      { id: "u_p2", email: "david.miller@college.edu", password: "password123", role: "Professor" },
-      
-      // Students
-      { id: "u_s1", email: "aryan.mane@college.edu", password: "password123", role: "Student" },
-      { id: "u_s2", email: "jessica.taylor@college.edu", password: "password123", role: "Student" },
-      { id: "u_s3", email: "rohan.sharma@college.edu", password: "password123", role: "Student" },
-      { id: "u_s4", email: "priya.patel@college.edu", password: "password123", role: "Student" },
-      { id: "u_s5", email: "liam.johnson@college.edu", password: "password123", role: "Student" },
-      { id: "u_s6", email: "emma.watson@college.edu", password: "password123", role: "Student" },
-      { id: "u_s7", email: "noah.alfayed@college.edu", password: "password123", role: "Student" },
-      { id: "u_s8", email: "mia.chen@college.edu", password: "password123", role: "Student" },
-      { id: "u_s9", email: "ethan.hunt@college.edu", password: "password123", role: "Student" },
-      { id: "u_s10", email: "sophia.loren@college.edu", password: "password123", role: "Student" }
+    // 1. Create 7 Professors & User Accounts
+    const profRawData = [
+      { id: "prof_1", name: "Dr. Sarah Jenkins", dept: "Computer Engineering", email: "sarah.jenkins@college.edu" },
+      { id: "prof_2", name: "Dr. David Miller", dept: "Information Technology", email: "david.miller@college.edu" },
+      { id: "prof_3", name: "Prof. Robert Chen", dept: "AI & Data Science", email: "robert.chen@college.edu" },
+      { id: "prof_4", name: "Dr. Ananya Rao", dept: "Computer Engineering", email: "ananya.rao@college.edu" },
+      { id: "prof_5", name: "Prof. Marcus Vance", dept: "Cyber Security", email: "marcus.vance@college.edu" },
+      { id: "prof_6", name: "Dr. Vikram Joshi", dept: "Electronics & Telecom", email: "vikram.joshi@college.edu" },
+      { id: "prof_7", name: "Prof. Elena Rostova", dept: "Mechanical Engineering", email: "elena.rostova@college.edu" }
     ];
 
-    // 2. Create Professors
-    const professors = [
-      { id: "prof_1", user_id: "u_p1", full_name: "Dr. Sarah Jenkins", department: "Computer Engineering" },
-      { id: "prof_2", user_id: "u_p2", full_name: "Dr. David Miller", department: "Information Technology" }
-    ];
+    const users = [];
+    const professors = [];
 
-    // 3. Create Subjects
+    profRawData.forEach((p, idx) => {
+      const uId = `u_p${idx + 1}`;
+      users.push({ id: uId, email: p.email, password: "password123", role: "Professor" });
+      professors.push({ id: p.id, user_id: uId, full_name: p.name, department: p.dept });
+    });
+
+    // 2. Create 14 Subjects assigned across the 7 Professors
     const subjects = [
       { id: "subj_1", name: "Computer Networks", professor_id: "prof_1" },
       { id: "subj_2", name: "Software Engineering", professor_id: "prof_1" },
-      { id: "subj_3", name: "Web Development", professor_id: "prof_1" },
-      { id: "subj_4", name: "Database Systems", professor_id: "prof_2" },
-      { id: "subj_5", name: "Artificial Intelligence", professor_id: "prof_2" }
+      { id: "subj_3", name: "Database Systems", professor_id: "prof_2" },
+      { id: "subj_4", name: "Web Development", professor_id: "prof_2" },
+      { id: "subj_5", name: "Machine Learning", professor_id: "prof_3" },
+      { id: "subj_6", name: "Artificial Intelligence", professor_id: "prof_3" },
+      { id: "subj_7", name: "Data Structures & Algorithms", professor_id: "prof_4" },
+      { id: "subj_8", name: "Operating Systems", professor_id: "prof_4" },
+      { id: "subj_9", name: "Cybersecurity Fundamentals", professor_id: "prof_5" },
+      { id: "subj_10", name: "Cloud Computing", professor_id: "prof_5" },
+      { id: "subj_11", name: "Digital Signal Processing", professor_id: "prof_6" },
+      { id: "subj_12", name: "Embedded Systems", professor_id: "prof_6" },
+      { id: "subj_13", name: "Robotics & Automation", professor_id: "prof_7" },
+      { id: "subj_14", name: "Fluid Mechanics", professor_id: "prof_7" }
     ];
 
-    // 4. Create Students
-    const students = [
-      { id: "stud_1", user_id: "u_s1", full_name: "Aryan Mane", roll_no: "59", division: "A", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aryan" },
-      { id: "stud_2", user_id: "u_s2", full_name: "Jessica Taylor", roll_no: "01", division: "A", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica" },
-      { id: "stud_3", user_id: "u_s3", full_name: "Rohan Sharma", roll_no: "45", division: "A", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan" },
-      { id: "stud_4", user_id: "u_s4", full_name: "Priya Patel", roll_no: "32", division: "B", branch: "Information Technology", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya" },
-      { id: "stud_5", user_id: "u_s5", full_name: "Liam Johnson", roll_no: "21", division: "A", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Liam" },
-      { id: "stud_6", user_id: "u_s6", full_name: "Emma Watson", roll_no: "15", division: "B", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
-      { id: "stud_7", user_id: "u_s7", full_name: "Noah Al-Fayed", roll_no: "41", division: "B", branch: "Information Technology", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Noah" },
-      { id: "stud_8", user_id: "u_s8", full_name: "Mia Chen", roll_no: "29", division: "A", branch: "Computer Engineering", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" },
-      { id: "stud_9", user_id: "u_s9", full_name: "Ethan Hunt", roll_no: "18", division: "B", branch: "Information Technology", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ethan" },
-      { id: "stud_10", user_id: "u_s10", full_name: "Sophia Loren", roll_no: "52", division: "A", branch: "Information Technology", profile_photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia" }
+    // 3. Create 70 Students & User Accounts (S001 to S070)
+    const studentNames = [
+      "Aryan Mane", "Jessica Taylor", "Rohan Sharma", "Priya Patel", "Liam Johnson",
+      "Emma Watson", "Noah Al-Fayed", "Mia Chen", "Ethan Hunt", "Sophia Loren",
+      "Aarav Verma", "Ananya Gupta", "Carlos Mendez", "Aisha Khan", "Rahul Deshmukh",
+      "Chloe Bennett", "Devendra Singh", "Fatima Al-Zahra", "Gabriel Silva", "Hannah Abbott",
+      "Ishaan Kapoor", "Julia Roberts", "Kavi Patel", "Leila Mansour", "Muhammad Ali",
+      "Natasha Romanoff", "Omar Farooq", "Pooja Hegde", "Quentin Tarantino", "Rhea Chakraborty",
+      "Siddharth Malhotra", "Tanvi Shah", "Umang Rathod", "Varun Dhawan", "Yash Vardhan",
+      "Zoya Akhtar", "Alexander Great", "Bianca Censori", "Chirag Paswan", "Divya Agarwal",
+      "Ekta Kapoor", "Felix Kjellberg", "Gayatri Devi", "Harsh Vardhan", "Inesh Roy",
+      "Janhvi Kapoor", "Karan Johar", "Lavanya Tripathi", "Manish Malhotra", "Nidhi Agarwal",
+      "Omkar Salunkhe", "Payal Rohatgi", "Qasim Khan", "Radhika Merchant", "Sahil Khan",
+      "Tara Sutaria", "Utkarsh Sharma", "Vidya Balan", "William Shakespeare", "Xavier Hernandez",
+      "Yamini Gautam", "Zaheer Khan", "Aditi Rao", "Bhavesh Joshi", "Charmi Kaur",
+      "Deepak Dobriyal", "Eshaan Shanker", "Farhan Akhtar", "Gul Panag", "Himansh Kohli"
     ];
 
-    // 5. Generate Historical Attendance for past 14 days
+    const branches = ["Computer Engineering", "Information Technology", "AI & Data Science", "Electronics & Telecom", "Mechanical Engineering"];
+    const divisions = ["A", "B"];
+
+    const students = [];
+
+    studentNames.forEach((name, idx) => {
+      const numStr = String(idx + 1).padStart(2, "0");
+      const uId = `u_s${idx + 1}`;
+      const studId = `stud_${idx + 1}`;
+      
+      // Keep Aryan Mane as student01 / stud_1 with Roll 59
+      const rollNo = (idx === 0) ? "59" : numStr;
+      const email = (idx === 0) ? "aryan.mane@college.edu" : (idx === 1) ? "jessica.taylor@college.edu" : `student${numStr}@college.edu`;
+      const branch = branches[idx % branches.length];
+      const div = divisions[idx % divisions.length];
+
+      users.push({
+        id: uId,
+        email: email,
+        password: "password123",
+        role: "Student"
+      });
+
+      students.push({
+        id: studId,
+        user_id: uId,
+        full_name: name,
+        roll_no: rollNo,
+        division: div,
+        branch: branch,
+        profile_photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name.replace(/\s+/g, ''))}`
+      });
+    });
+
+    // 4. Generate Historical Attendance for past 30 days for all 70 students
     const records = [];
     const statuses = ["Present", "Present", "Present", "Present", "Absent", "Late", "Present"];
-    
+
     const isEnrolled = (student, subject) => {
-      if (student.branch === "Computer Engineering") {
-        return ["subj_1", "subj_2", "subj_3", "subj_4"].includes(subject.id);
-      } else {
-        return ["subj_1", "subj_3", "subj_4", "subj_5"].includes(subject.id);
-      }
+      const map = {
+        "Computer Engineering": ["subj_1", "subj_2", "subj_3", "subj_4", "subj_7", "subj_8"],
+        "Information Technology": ["subj_1", "subj_3", "subj_4", "subj_9", "subj_10"],
+        "AI & Data Science": ["subj_3", "subj_5", "subj_6", "subj_7"],
+        "Electronics & Telecom": ["subj_1", "subj_4", "subj_11", "subj_12"],
+        "Mechanical Engineering": ["subj_2", "subj_12", "subj_13", "subj_14"]
+      };
+      const allowed = map[student.branch] || ["subj_1", "subj_3"];
+      return allowed.includes(subject.id);
     };
 
     const today = new Date();
     let recordCounter = 1;
 
-    for (let i = 25; i >= 1; i--) {
+    for (let i = 30; i >= 1; i--) {
       const date = new Date();
       date.setDate(today.getDate() - i);
       const dateString = date.toISOString().split("T")[0];
@@ -97,10 +143,10 @@ class AttendanceDB {
           if (isEnrolled(student, subject)) {
             const statusIndex = Math.floor(Math.random() * statuses.length);
             let status = statuses[statusIndex];
-            
-            // Ensure Aryan Mane has realistic attendance to test features
-            if (student.id === "stud_1" && i === 2) status = "Absent";
-            if (student.id === "stud_1" && i === 5) status = "Absent";
+
+            // Controlled attendance variations for Aryan Mane and S002
+            if (student.id === "stud_1" && (i === 3 || i === 8 || i === 12)) status = "Absent";
+            if (student.id === "stud_2" && (i === 4 || i === 10)) status = "Absent";
 
             records.push({
               id: `rec_${recordCounter++}`,
@@ -114,7 +160,7 @@ class AttendanceDB {
       });
     }
 
-    // 6. Seed Sample Leave Applications
+    // 5. Seed Sample Leave Applications
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 2);
     const leaves = [
@@ -134,6 +180,15 @@ class AttendanceDB {
         date: yesterday.toISOString().split("T")[0],
         reason: "Inter-college Swimming Championship finals.",
         status: "Approved",
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "leave_3",
+        student_id: "stud_12", // Ananya Gupta
+        subject_id: "subj_5", // Machine Learning
+        date: yesterday.toISOString().split("T")[0],
+        reason: "Attending National AI Hackathon.",
+        status: "Pending",
         created_at: new Date().toISOString()
       }
     ];
@@ -157,11 +212,57 @@ class AttendanceDB {
   }
 
   static isStudentEnrolled(student, subjectId) {
-    if (student.branch === "Computer Engineering") {
-      return ["subj_1", "subj_2", "subj_3", "subj_4"].includes(subjectId);
-    } else {
-      return ["subj_1", "subj_3", "subj_4", "subj_5"].includes(subjectId);
+    const map = {
+      "Computer Engineering": ["subj_1", "subj_2", "subj_3", "subj_4", "subj_7", "subj_8"],
+      "Information Technology": ["subj_1", "subj_3", "subj_4", "subj_9", "subj_10"],
+      "AI & Data Science": ["subj_3", "subj_5", "subj_6", "subj_7"],
+      "Electronics & Telecom": ["subj_1", "subj_4", "subj_11", "subj_12"],
+      "Mechanical Engineering": ["subj_2", "subj_12", "subj_13", "subj_14"]
+    };
+    const allowed = map[student.branch] || ["subj_1", "subj_3"];
+    return allowed.includes(subjectId);
+  }
+
+  static resetAttendanceRecords() {
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.LEAVES, JSON.stringify([]));
+  }
+
+  static exportDatabaseBackup() {
+    return {
+      version: DB_VERSION,
+      timestamp: new Date().toISOString(),
+      users: AttendanceDB.getData(STORAGE_KEYS.USERS),
+      professors: AttendanceDB.getData(STORAGE_KEYS.PROFESSORS),
+      subjects: AttendanceDB.getData(STORAGE_KEYS.SUBJECTS),
+      students: AttendanceDB.getData(STORAGE_KEYS.STUDENTS),
+      records: AttendanceDB.getData(STORAGE_KEYS.RECORDS),
+      leaves: AttendanceDB.getData(STORAGE_KEYS.LEAVES)
+    };
+  }
+
+  static importDatabaseBackup(backupObj) {
+    if (!backupObj || !backupObj.users || !backupObj.students) {
+      throw new Error("Invalid database backup JSON format.");
     }
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(backupObj.users));
+    localStorage.setItem(STORAGE_KEYS.PROFESSORS, JSON.stringify(backupObj.professors));
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(backupObj.subjects));
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(backupObj.students));
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(backupObj.records || []));
+    localStorage.setItem(STORAGE_KEYS.LEAVES, JSON.stringify(backupObj.leaves || []));
+    localStorage.setItem(STORAGE_KEYS.DB_INITIALIZED, "true");
+  }
+
+  static reseedDatabase() {
+    localStorage.removeItem(STORAGE_KEYS.DB_INITIALIZED);
+    localStorage.removeItem(STORAGE_KEYS.USERS);
+    localStorage.removeItem(STORAGE_KEYS.PROFESSORS);
+    localStorage.removeItem(STORAGE_KEYS.SUBJECTS);
+    localStorage.removeItem(STORAGE_KEYS.STUDENTS);
+    localStorage.removeItem(STORAGE_KEYS.RECORDS);
+    localStorage.removeItem(STORAGE_KEYS.LEAVES);
+    AttendanceDB.init();
   }
 }
 
@@ -359,6 +460,104 @@ function setupEventListeners() {
       document.getElementById("calc-target-value").textContent = `${e.target.value}%`;
       calculateAttendanceGoal();
     });
+  }
+
+  // Admin Data Panel Controls
+  const adminModalBtn = document.getElementById("admin-modal-btn");
+  if (adminModalBtn) adminModalBtn.addEventListener("click", openAdminModal);
+
+  const closeAdminModalBtn = document.getElementById("close-admin-modal-btn");
+  if (closeAdminModalBtn) closeAdminModalBtn.addEventListener("click", closeAdminModal);
+
+  const exportBackupBtn = document.getElementById("btn-export-db-json");
+  if (exportBackupBtn) exportBackupBtn.addEventListener("click", handleExportBackup);
+
+  const importBackupBtn = document.getElementById("btn-import-db-json");
+  if (importBackupBtn) importBackupBtn.addEventListener("click", () => {
+    document.getElementById("import-db-file").click();
+  });
+
+  const importFileInput = document.getElementById("import-db-file");
+  if (importFileInput) importFileInput.addEventListener("change", handleImportBackup);
+
+  const reseedBtn = document.getElementById("btn-reseed-db");
+  if (reseedBtn) reseedBtn.addEventListener("click", handleReseedData);
+
+  const clearLogsBtn = document.getElementById("btn-clear-attendance-logs");
+  if (clearLogsBtn) clearLogsBtn.addEventListener("click", handleClearLogs);
+}
+
+// ADMIN & DATA MANAGEMENT HANDLERS
+function openAdminModal() {
+  const modal = document.getElementById("admin-data-modal");
+  if (!modal) return;
+
+  const profs = AttendanceDB.getData(STORAGE_KEYS.PROFESSORS);
+  const studs = AttendanceDB.getData(STORAGE_KEYS.STUDENTS);
+  const subjs = AttendanceDB.getData(STORAGE_KEYS.SUBJECTS);
+  const recs = AttendanceDB.getData(STORAGE_KEYS.RECORDS);
+  const leaves = AttendanceDB.getData(STORAGE_KEYS.LEAVES);
+
+  if (document.getElementById("admin-stat-teachers")) document.getElementById("admin-stat-teachers").textContent = profs.length;
+  if (document.getElementById("admin-stat-students")) document.getElementById("admin-stat-students").textContent = studs.length;
+  if (document.getElementById("admin-stat-subjects")) document.getElementById("admin-stat-subjects").textContent = subjs.length;
+  if (document.getElementById("admin-stat-records")) document.getElementById("admin-stat-records").textContent = recs.length;
+  if (document.getElementById("admin-stat-leaves")) document.getElementById("admin-stat-leaves").textContent = leaves.length;
+
+  modal.classList.remove("hidden");
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById("admin-data-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function handleExportBackup() {
+  const backup = AttendanceDB.exportDatabaseBackup();
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+  const link = document.createElement("a");
+  link.setAttribute("href", dataStr);
+  link.setAttribute("download", `apex_college_attendance_db_backup_${new Date().toISOString().split("T")[0]}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Database backup JSON downloaded!");
+}
+
+function handleImportBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const backupObj = JSON.parse(event.target.result);
+      AttendanceDB.importDatabaseBackup(backupObj);
+      showToast("Database restored successfully!");
+      closeAdminModal();
+      location.reload();
+    } catch (err) {
+      showToast("Failed to import database: " + err.message, "error");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function handleReseedData() {
+  if (confirm("Reset database to fresh seeded state (7 Teachers, 70 Students, 14 Subjects)?")) {
+    AttendanceDB.reseedDatabase();
+    showToast("Database re-seeded successfully!");
+    closeAdminModal();
+    location.reload();
+  }
+}
+
+function handleClearLogs() {
+  if (confirm("Clear all attendance logs and leave requests? Accounts will be preserved.")) {
+    AttendanceDB.resetAttendanceRecords();
+    showToast("Attendance logs cleared!");
+    closeAdminModal();
+    if (currentUser) showDashboard();
   }
 }
 
