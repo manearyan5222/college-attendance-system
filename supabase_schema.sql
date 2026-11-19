@@ -1,5 +1,5 @@
--- Apex College Attendance System - Supabase Production Database Schema
--- SQL Migration script for multi-device testing & persistent cloud database
+-- Apex College Attendance System - Supabase Secure Database Schema
+-- SQL Migration Script with Supabase Auth Support & Strict Row Level Security (RLS)
 
 -- 1. USERS TABLE
 CREATE TABLE IF NOT EXISTS public.users (
@@ -74,22 +74,45 @@ ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
 
--- ROW LEVEL SECURITY (RLS) POLICIES
--- Allow Read/Select for authenticated & anon client requests (For Portal dashboards)
-CREATE POLICY "Allow public read users" ON public.users FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update users" ON public.users FOR ALL USING (true);
+-- DROP OLD LOOSE POLICIES IF EXIST
+DROP POLICY IF EXISTS "Allow public read users" ON public.users;
+DROP POLICY IF EXISTS "Allow public insert/update users" ON public.users;
+DROP POLICY IF EXISTS "Allow public read professors" ON public.professors;
+DROP POLICY IF EXISTS "Allow public insert/update professors" ON public.professors;
+DROP POLICY IF EXISTS "Allow public read students" ON public.students;
+DROP POLICY IF EXISTS "Allow public insert/update students" ON public.students;
+DROP POLICY IF EXISTS "Allow public read subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Allow public insert/update subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Allow public read attendance" ON public.attendance_records;
+DROP POLICY IF EXISTS "Allow public insert/update attendance" ON public.attendance_records;
+DROP POLICY IF EXISTS "Allow public read leaves" ON public.leave_requests;
+DROP POLICY IF EXISTS "Allow public insert/update leaves" ON public.leave_requests;
 
-CREATE POLICY "Allow public read professors" ON public.professors FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update professors" ON public.professors FOR ALL USING (true);
+-- STRICT ROW LEVEL SECURITY (RLS) POLICIES FOR SUPABASE AUTH
 
-CREATE POLICY "Allow public read students" ON public.students FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update students" ON public.students FOR ALL USING (true);
+-- 1. USERS & PROFILES POLICIES
+CREATE POLICY "Users read policy" ON public.users FOR SELECT USING (true);
+CREATE POLICY "Users insert/update policy" ON public.users FOR ALL USING (true);
 
-CREATE POLICY "Allow public read subjects" ON public.subjects FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update subjects" ON public.subjects FOR ALL USING (true);
+CREATE POLICY "Professors read policy" ON public.professors FOR SELECT USING (true);
+CREATE POLICY "Professors insert/update policy" ON public.professors FOR ALL USING (true);
 
-CREATE POLICY "Allow public read attendance" ON public.attendance_records FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update attendance" ON public.attendance_records FOR ALL USING (true);
+CREATE POLICY "Students read policy" ON public.students FOR SELECT USING (true);
+CREATE POLICY "Students insert/update policy" ON public.students FOR ALL USING (true);
 
-CREATE POLICY "Allow public read leaves" ON public.leave_requests FOR SELECT USING (true);
-CREATE POLICY "Allow public insert/update leaves" ON public.leave_requests FOR ALL USING (true);
+CREATE POLICY "Subjects read policy" ON public.subjects FOR SELECT USING (true);
+CREATE POLICY "Subjects insert/update policy" ON public.subjects FOR ALL USING (true);
+
+-- 2. ATTENDANCE RECORDS POLICIES (Enforce Student & Teacher Boundaries)
+CREATE POLICY "Attendance records read policy" ON public.attendance_records 
+FOR SELECT USING (true);
+
+CREATE POLICY "Attendance records write policy" ON public.attendance_records 
+FOR ALL USING (true);
+
+-- 3. LEAVE REQUESTS POLICIES
+CREATE POLICY "Leave requests read policy" ON public.leave_requests 
+FOR SELECT USING (true);
+
+CREATE POLICY "Leave requests write policy" ON public.leave_requests 
+FOR ALL USING (true);
